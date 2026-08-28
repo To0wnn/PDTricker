@@ -621,8 +621,30 @@ void main()
         case BOOT_SAFE_DELAY:
             pd_set(PD_5V);
             if (curr_pd != PD_5V) {
+                /* fast-blink the remembered target LED for the whole hold,
+                 * so it's visible up front where this is heading instead
+                 * of only starting to blink once the delay is already
+                 * over - same fast-blink cadence pd_apply()'s own
+                 * negotiate feedback uses, just started early. */
                 #define BOOT_SAFE_HOLD_MS 3000
-                mDelaymS(BOOT_SAFE_HOLD_MS);
+                {
+                    uint16_t held_ms = 0;
+                    while (held_ms < BOOT_SAFE_HOLD_MS) {
+                        /* keep re-checking 5V itself too, not just the
+                         * target LED - a slow charger can still be
+                         * settling onto 5V partway into this hold (seen on
+                         * hardware: consistent right after a quick
+                         * unplug/replug, inconsistent after a longer gap),
+                         * and without this its LED state was frozen at
+                         * whatever the single pd_set(PD_5V) above saw. */
+                        pd_verify(PD_5V);
+                        led_off(curr_pd);
+                        mDelaymS(200);
+                        led_set(curr_pd, LED_MODE_ON);
+                        mDelaymS(200);
+                        held_ms += 400;
+                    }
+                }
                 pd_apply(PD_5V, curr_pd);
             }
             break;
