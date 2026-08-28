@@ -41,6 +41,24 @@ cable, keep holding for 10s — jumps into flash mode too, no bridge needed.
 - `firmware/main.c` — application
 - `include/` — SDCC-compatible CH552 headers + adc/debug helpers
 
+## LEDs
+
+Normal use: one LED (5V/9V/12V/15V/20V) = current output voltage.
+
+| Pattern | Meaning |
+|---|---|
+| Solid | Requested voltage confirmed |
+| Fast blink | Still negotiating |
+| Slow blink | Fault — never confirmed, falls back to last-good voltage after ~5.5s |
+| 20V fast blink, alone | Menu entry hold (5-10s) / bootloader hold (10s+) |
+
+In the mode menu (after a 5s hold): 5V/9V/12V = boot mode, not voltage —
+5V=always-5V, 9V=safe-delay, 12V=remembered. 20V blinks slowly the whole
+time as a "still in menu" indicator.
+
+Safe-delay boot: 5V lights up, and the remembered target LED fast-blinks
+alongside it for 3s before switching over.
+
 ## Extra features (beyond the original)
 
 - UART commands: `5V`/`9V`/`12V`/`15V`/`20V`/`?`/`?stats`/`?reset`/`MODE0-2`
