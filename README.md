@@ -9,8 +9,24 @@ template.
 
 ```
 cd firmware
-make            # -> pdtricker.hex / pdtricker.bin
+make FREQ_SYS=16000000 EXTRA_FLAGS='-DUART0_BAUD=57600'   # -> pdtricker.hex / pdtricker.bin
 ```
+
+Both flags matter, not just style:
+
+- **`FREQ_SYS=16000000`** — the default `24000000` hangs the chip during
+  `CfgFsys()`'s clock-select sequence on boot (confirmed on hardware, not
+  theoretical). 16MHz is the combination that's actually been run reliably.
+- **`EXTRA_FLAGS='-DUART0_BAUD=57600'`** — `UART0_BAUD` is never set
+  otherwise and silently falls back to `debug.h`'s `9600` default, which
+  overflows the 8-bit `TH1` baud-rate reload register at 16MHz (the actual
+  baud ends up unpredictable, not 9600). 57600 is what the UART command
+  docs below assume.
+
+A precompiled `pdtricker.bin`/`.hex` (built with these exact flags, from
+the current `main.c`) is attached to the
+[latest release](../../releases/latest) if you just want to flash it
+without building.
 
 ## Flash over USB
 
