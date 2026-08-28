@@ -53,11 +53,23 @@ Normal use: one LED (5V/9V/12V/15V/20V) = current output voltage.
 | 20V fast blink, alone | Menu entry hold (5-10s) / bootloader hold (10s+) |
 
 In the mode menu (after a 5s hold): 5V/9V/12V = boot mode, not voltage —
-5V=always-5V, 9V=safe-delay, 12V=remembered. 20V blinks slowly the whole
-time as a "still in menu" indicator.
+see below. 20V blinks slowly the whole time as a "still in menu" indicator.
 
-Safe-delay boot: 5V lights up, and the remembered target LED fast-blinks
-alongside it for 3s before switching over.
+## Boot modes
+
+What voltage the board requests automatically when you plug it in — button
+cycling (click to change voltage) always works the same in every mode, this
+only affects the very first moment at power-on.
+
+| Menu LED | Mode | What happens at power-on |
+|---|---|---|
+| 5V | always-5V | Always boots on 5V, ignores whatever was remembered. |
+| 9V | safe-delay | Boots on 5V first, then after 3s steps up to the remembered voltage — gives whatever's plugged in 3 safe seconds before the real voltage hits. The target LED fast-blinks during that 3s so you can see where it's heading. |
+| 12V | remembered | Boots straight on the last voltage you had selected. |
+
+Set it: hold the button ~5s to open the menu, click to step through the 3
+options (shown one LED at a time), then either hold ~800ms or wait ~2s idle
+to save and exit. Or over UART: `MODE0`/`MODE1`/`MODE2`.
 
 ## Extra features (beyond the original)
 
@@ -71,5 +83,3 @@ alongside it for 3s before switching over.
   doesn't unnecessarily drop you all the way down.
 - Voltage remembered across power cycles.
 - Safe-boot override: hold button <5s at power-on → forces 5V.
-- 3 boot modes (always-5V / safe-delay / remembered), set via ~5s hold menu
-  or `MODE0-2` UART command.
