@@ -5,6 +5,29 @@ trigger board (CH552T MCU), ported from Keil C51 to SDCC so it builds on
 Linux. Based on the [ch554_sdcc](https://github.com/Blinkinlabs/ch554_sdcc)
 template.
 
+## Changes vs. upstream
+
+Besides the SDCC port itself and the [extra features](#extra-features-beyond-the-original)
+listed below, three hardware/firmware bugs were found and fixed on real
+boards (all in `firmware/main.c`, see its comments for the full story):
+
+- **Button pin (P1.0/KEY) never actually configured as a pulled-up
+  input** — only `P1_DIR_PU` was set, not `P1_MOD_OC`, so the pin could
+  boot as a push-pull output and the button would appear completely dead.
+- **`FREQ_SYS=24000000` hangs the chip** during `CfgFsys()`'s clock-select
+  sequence on boot. `16000000` is the value confirmed to run reliably.
+- **Main-loop timing silently drifted from real time** — an unconditional
+  debug `printf()` on every loop iteration blocked the CPU per UART
+  character (polled, unbuffered `putchar()`), stretching every
+  millisecond-counted button-hold threshold (5s menu, 10s bootloader) well
+  past their real durations. Fixed by removing that printf from the hot
+  path, explicitly pinning `UART0_BAUD` (it was silently defaulting to a
+  value that overflows the baud-rate register at 16MHz), and replacing a
+  32-bit modulo (no hardware divide on the 8051) with a plain counter.
+
+All three button gestures (short click, 5s hold → mode menu, 10s hold →
+ISP bootloader) are confirmed working on hardware after these fixes.
+
 ## Build
 
 ```
