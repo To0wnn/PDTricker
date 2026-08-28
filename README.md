@@ -46,8 +46,11 @@ cable, keep holding for 10s — jumps into flash mode too, no bridge needed.
 - UART commands: `5V`/`9V`/`12V`/`15V`/`20V`/`?`/`?stats`/`?reset`/`MODE0-2`
   (57600 baud, TX=P3.1, RX=P3.0).
 - Click cycles 5V→9V→12V→15V→20V; double-click steps back.
-- LED fault feedback: fast blink = negotiating, slow blink = fault, falls
-  back to 5V if a requested voltage never verifies.
+- LED fault feedback: fast blink = negotiating, slow blink = fault. If a
+  requested voltage never verifies (charger doesn't support it), waits
+  ~5.5s total then falls back to the last voltage that *did* verify — not
+  always 5V, so a gap in what's supported (e.g. 9V/15V present but not 12V)
+  doesn't unnecessarily drop you all the way down.
 - Voltage remembered across power cycles.
 - Safe-boot override: hold button <5s at power-on → forces 5V.
 - 3 boot modes (always-5V / safe-delay / remembered), set via ~5s hold menu

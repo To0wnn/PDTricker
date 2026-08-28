@@ -211,8 +211,22 @@ int pd_set(uint8_t value)
 uint16_t negotiate_ms_left = 0;
 
 /* set by pd_verify() once a mismatch has persisted past the negotiate window;
- * main() checks this and falls back to 5V */
+ * main() checks this and falls back once FAULT_HOLD_MS has also elapsed */
 uint8_t pd_fault = 0;
+
+/* extra grace period on top of PD_NEGOTIATE_MS before actually falling back
+ * on a fault - gives a slow charger/cable a real chance to still pick it up,
+ * and gives you time to manually switch away yourself (the slow-blink fault
+ * indicator is already visible the whole time) instead of the board
+ * snapping back the instant the 500ms negotiate window closes. */
+#define FAULT_HOLD_MS 5000
+uint16_t fault_ms = 0;
+
+/* last voltage that actually verified OK - what a fault falls back to,
+ * instead of always forcing 5V. If nothing has ever verified yet (e.g. the
+ * very first switch after boot fails), PD_5V is the sane starting value
+ * here since it's the one level every PD source is required to support. */
+uint8_t last_good_pd = PD_5V;
 
 /* compare with adc value */
 int pd_verify(uint8_t value)
@@ -258,6 +272,8 @@ int pd_verify(uint8_t value)
     if (r == 0) {
         negotiate_ms_left = 0;
         pd_fault = 0;
+        fault_ms = 0;
+        last_good_pd = value;
         led_set(value, LED_MODE_ON);
     } else if (negotiate_ms_left > 0) {
         led_set(value, LED_MODE_BLINK_FAST);   /* still negotiating: fast blink */
@@ -375,6 +391,8 @@ void pd_apply(uint8_t curr_pd, uint8_t next_pd)
     led_off(curr_pd);
     printf("pd_set %d\n", next_pd);
     negotiate_ms_left = PD_NEGOTIATE_MS;
+    fault_ms = 0;
+    pd_fault = 0;
     pd_set(next_pd);
     pd_config_update(next_pd);
     switch_count[next_pd]++;
@@ -726,12 +744,24 @@ void main()
         pd_verify(curr_pd);
 
         if (pd_fault) {
-            /* ADC reading never matched the requested voltage: bail out to 5V
-             * instead of leaving the output sitting on a bad/unverified level */
-            printf("fault: %d mismatched, falling back to 5V\n", curr_pd);
-            pd_fault = 0;
-            pd_apply(curr_pd, PD_5V);
-            curr_pd = PD_5V;
+            /* Give it FAULT_HOLD_MS on top of the PD_NEGOTIATE_MS window
+             * already spent before actually falling back - a slow
+             * charger/cable might still pick it up, and the slow-blink LED
+             * already shows something's wrong so there's time to manually
+             * switch away yourself if you don't want to wait. */
+            fault_ms += 10;
+            if (fault_ms >= FAULT_HOLD_MS) {
+                /* still mismatched after the extra grace period: bail out
+                 * to the last voltage that actually verified OK (not
+                 * always 5V - if e.g. 12V isn't supported by whatever's
+                 * plugged in but 9V is, this lands back on 9V instead of
+                 * unnecessarily dropping all the way to 5V) instead of
+                 * leaving the output sitting on a bad/unverified level. */
+                printf("fault: %d mismatched, falling back to %d\n", curr_pd, last_good_pd);
+                pd_fault = 0;
+                pd_apply(curr_pd, last_good_pd);
+                curr_pd = last_good_pd;
+            }
         }
 
         /* fast blink every 200ms, slow blink every 600ms */
