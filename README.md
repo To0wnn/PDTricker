@@ -33,8 +33,8 @@ after ~1s. Board shows up as `4348:55e0`.
 wchisp flash pdtricker.bin
 ```
 
-Once this firmware is already flashed, holding the button 10s at power-on
-jumps into flash mode too — no bridge needed after the first flash.
+Once this firmware is already flashed: hold the button, plug in the USB-C
+cable, keep holding for 10s — jumps into flash mode too, no bridge needed.
 
 ## Layout
 
